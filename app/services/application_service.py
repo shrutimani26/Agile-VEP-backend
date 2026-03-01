@@ -11,61 +11,38 @@ class ApplicationService:
     """Service class for application CRUD operations"""
     
     @staticmethod
-    def create_application(user_id, vehicle_id):
-        """
-        Create a new application (starts as DRAFT)
-        
-        Args:
-            user_id: ID of the user
-            vehicle_id: ID of the vehicle
-            
-        Returns:
-            tuple: (application, error_message)
-        """
+    def create_vehicle_and_application(user_id, vehicle_data):
         try:
-            # Validate user exists
             user = User.query.get(user_id)
             if not user:
-                return None, "User not found"
-            
-            # Validate vehicle exists and belongs to user
-            vehicle = Vehicle.query.get(vehicle_id)
-            if not vehicle:
-                return None, "Vehicle not found"
-            
-            if vehicle.user_id != user_id:
-                return None, "Vehicle does not belong to user"
-            
-            # Check if there's already an active application for this vehicle
-            active_application = Application.query.filter_by(
-                vehicle_id=vehicle_id
-            ).filter(
-                Application.status.in_([
-                    ApplicationStatus.SUBMITTED,
-                    ApplicationStatus.PENDING_REVIEW,
-                    ApplicationStatus.APPROVED
-                ])
-            ).first()
-            
-            if active_application:
-                return None, "Vehicle already has an active application"
-            
-            # Create application
+                return None, None, "User not found"
+
+            vehicle = Vehicle(
+                user_id=user_id,
+                plate_no=vehicle_data["plate_no"],
+                make=vehicle_data["make"],
+                model=vehicle_data["model"],
+                year=vehicle_data["year"],
+                vin=vehicle_data["vin"],
+                insurance_expiry=vehicle_data["insurance_expiry"]
+            )
+            db.session.add(vehicle)
+            db.session.flush()  # assigns vehicle.id without committing
+
             application = Application(
                 user_id=user_id,
-                vehicle_id=vehicle_id,
-                status=ApplicationStatus.DRAFT,
+                vehicle_id=vehicle.id,
+                status=ApplicationStatus.SUBMITTED,
                 payment_status=PaymentStatus.PENDING
             )
-            
             db.session.add(application)
             db.session.commit()
-            print("Created app id:", application.id)
-            return application, None
-        
+
+            return vehicle, application, None
+
         except Exception as e:
             db.session.rollback()
-            return None, str(e)
+            return None, None, str(e)
     
     @staticmethod
     def get_application_by_id(application_id, user_id=None):
@@ -164,8 +141,8 @@ class ApplicationService:
             if error:
                 return None, error
             
-            # Check if application can be submitted
-            if application.status != ApplicationStatus.DRAFT:
+            # # Check if application can be submitted
+            if application.status != ApplicationStatus.SUBMITTED:
                 return None, f"Cannot submit application with status: {application.status.value}"
             
             # Check if there are documents
@@ -287,8 +264,7 @@ class ApplicationService:
             if error:
                 return False, error
             
-            # Only allow deletion of DRAFT or REJECTED applications
-            if application.status not in [ApplicationStatus.DRAFT, ApplicationStatus.REJECTED]:
+            if application.status not in [ApplicationStatus.SUBMITTED, ApplicationStatus.REJECTED]:
                 return False, f"Cannot delete application with status: {application.status.value}"
             
             db.session.delete(application)

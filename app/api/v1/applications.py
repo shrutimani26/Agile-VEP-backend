@@ -1,40 +1,79 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.application_service import ApplicationService
+from app.services.vehicle_service import VehicleService
 from app.models import UserRole, User
 from app.api.v1 import application_bp
 
+# @application_bp.route('', methods=['POST'])
+# @jwt_required()
+# def create_application():
+#     """
+#     Create a new application
+    
+#     POST /api/v1/applications
+#     Body: {"vehicle_id": 1}
+#     """
+#     try:
+#         user_id = int(get_jwt_identity())
+#         data = request.get_json()
+        
+#         if not data or 'vehicle_id' not in data:
+#             return jsonify({'error': 'vehicle_id is required'}), 400
+        
+#         application, error = ApplicationService.create_application(
+#             user_id, data['vehicle_id']
+#         )
+        
+#         if error:
+#             return jsonify({'error': error}), 400
+        
+#         return jsonify({
+#             'message': 'Application created successfully',
+#             'application': application.to_dict()
+#         }), 201
+        
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
 @application_bp.route('', methods=['POST'])
 @jwt_required()
 def create_application():
     """
-    Create a new application
-    
+    Create a new application, creating the vehicle first if vehicle data is provided.
     POST /api/v1/applications
-    Body: {"vehicle_id": 1}
+    Body: {
+        "plate_no": "SGX1234A",
+        "make": "Toyota",
+        "model": "Camry",
+        "year": 2020,
+        "vin": "1HGBH41JXMN109186",
+        "insurance_expiry": "2025-12-31"
+    }
     """
     try:
         user_id = int(get_jwt_identity())
         data = request.get_json()
-        
-        if not data or 'vehicle_id' not in data:
-            return jsonify({'error': 'vehicle_id is required'}), 400
-        
-        application, error = ApplicationService.create_application(
-            user_id, data['vehicle_id']
-        )
-        
+
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        required_vehicle_fields = ['plate_no', 'make', 'model', 'year', 'vin', 'insurance_expiry']
+        missing = [f for f in required_vehicle_fields if f not in data]
+        if missing:
+            return jsonify({'error': f'Missing required fields: {", ".join(missing)}'}), 400
+
+        vehicle, application, error = ApplicationService.create_vehicle_and_application(user_id, data)
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({
-            'message': 'Application created successfully',
+            'message': 'Vehicle and application created successfully',
+            'vehicle': vehicle.to_dict(),
             'application': application.to_dict()
         }), 201
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @application_bp.route('', methods=['GET'])
 @jwt_required()

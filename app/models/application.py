@@ -4,12 +4,10 @@ from app.models.payment import PaymentStatus
 import enum
 
 class ApplicationStatus(enum.Enum):
-    DRAFT = 'DRAFT'
     SUBMITTED = 'SUBMITTED'
-    PENDING_REVIEW = 'PENDING_REVIEW'
+    PENDING_REVIEW = 'PENDING REVIEW'
     APPROVED = 'APPROVED'
     REJECTED = 'REJECTED'
-    EXPIRED = 'EXPIRED'
 
 class Application(db.Model):
     __tablename__ = 'applications'
@@ -17,8 +15,8 @@ class Application(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=False)
-    status = db.Column(db.Enum(ApplicationStatus), nullable=False, default=ApplicationStatus.DRAFT)
-    payment_status = db.Column(db.Enum(PaymentStatus), nullable=False, default=PaymentStatus.PENDING)
+    status = db.Column(db.Enum(ApplicationStatus), nullable=False, default=ApplicationStatus.SUBMITTED)
+    payment_status = db.Column(db.Enum(PaymentStatus), nullable=False, default=PaymentStatus.PAID)
     
     submitted_at = db.Column(db.DateTime)
     reviewed_at = db.Column(db.DateTime)
@@ -40,7 +38,6 @@ class Application(db.Model):
         return {
             'id': str(self.id),
             'userId': str(self.user_id),
-            'vehicleId': str(self.vehicle_id),
             'status': self.status.value,
             'paymentStatus': self.payment_status.value,
             'submittedAt': self.submitted_at.isoformat() if self.submitted_at else None,

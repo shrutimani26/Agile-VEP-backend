@@ -174,10 +174,9 @@ class DocumentService:
             if error:
                 return False, error, None
             
-            # Check if application is still in DRAFT
             application = Application.query.get(document.application_id)
             from app.models import ApplicationStatus
-            if application.status != ApplicationStatus.DRAFT:
+            if application.status != ApplicationStatus.SUBMITTED:
                 return False, "Cannot delete documents from submitted applications", None
             
             file_path = document.file_path
