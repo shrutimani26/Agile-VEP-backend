@@ -1,4 +1,17 @@
-# Use official Python runtime as base image
+# Build frontend
+FROM node:18-alpine as frontend
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+
+RUN npm install
+
+COPY frontend/ .
+
+RUN npm run build
+
+# Backend
 FROM python:3.11-slim
 
 # Set working directory
@@ -24,6 +37,9 @@ RUN pip install --upgrade pip && \
 
 # Copy application code
 COPY . .
+
+# Copy frontend build
+COPY --from=frontend /frontend/build ./build
 
 # Expose port
 EXPOSE 5000
