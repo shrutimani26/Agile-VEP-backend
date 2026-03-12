@@ -1,11 +1,10 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify
 from app.config import config_by_name
 from app.extensions import db, migrate, bcrypt, jwt, cors
-import os
 
 def create_app(config_name='development'):
     """Application factory pattern"""
-    app = Flask(__name__, static_folder='build')
+    app = Flask(__name__)
     
     # Load configuration
     app.config.from_object(config_by_name[config_name])
@@ -43,9 +42,6 @@ def create_app(config_name='development'):
     # Root endpoint
     @app.route('/')
     def index():
-        # Serve React app if build exists, else API info
-        if os.path.exists(os.path.join(app.static_folder, 'index.html')):
-            return send_from_directory(app.static_folder, 'index.html')
         return {
             'message': 'Vehicle Passport API',
             'version': '1.0.0',
@@ -54,17 +50,6 @@ def create_app(config_name='development'):
                 'auth': '/api/v1/auth'
             }
         }, 200
-    
-    # Catch all for SPA
-    @app.route('/<path:path>')
-    def catch_all(path):
-        # Serve static files or index.html for SPA routing
-        if os.path.exists(os.path.join(app.static_folder, path)):
-            return send_from_directory(app.static_folder, path)
-        elif os.path.exists(os.path.join(app.static_folder, 'index.html')):
-            return send_from_directory(app.static_folder, 'index.html')
-        else:
-            return {'error': 'Not found'}, 404
     
     return app
 
