@@ -1,0 +1,7 @@
+{
+  "name": "VEP FastPass",
+  "description": "A streamlined Singapore entry permit application and border verification system for Malaysian-registered vehicles.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

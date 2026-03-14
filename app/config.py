@@ -31,11 +31,10 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    """Development configuration"""
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'DATABASE_URL',
-        'postgresql://postgres:password@localhost:5432/vehicle_passport_dev'
+        'postgresql://postgres:password@localhost:5432/vehicle_passport_db'
     )
     SQLALCHEMY_ECHO = True
 
@@ -46,9 +45,11 @@ class ProductionConfig(Config):
     SQLALCHEMY_ECHO = False
 
 class TestingConfig(Config):
-    """Testing configuration"""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:password@localhost:5432/vehicle_passport_test'
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL',
+        'postgresql://postgres:password@localhost:5432/vehicle_passport_test'
+    )
 
 config_by_name = {
     'development': DevelopmentConfig,

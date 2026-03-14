@@ -1,462 +1,251 @@
-# Vehicle Backend - Authentication API
+# AutoQRPass — Vehicle Entry Permit System
 
-A secure Flask-based REST API for user authentication inspired by .NET Core Identity, featuring JWT access tokens, database-managed refresh tokens, and HTTP-only cookie storage.
-
-## Features
-
-- ✅ User registration with email validation
-- ✅ User login with JWT access tokens (1 hour expiry)
-- ✅ Refresh token stored in secure HTTP-only cookies (7 days)
-- ✅ Password hashing with bcrypt
-- ✅ Protected endpoints with JWT authentication
-- ✅ Refresh token revocation on logout
-- ✅ Database-managed refresh token storage (prevents reuse)
-- ✅ CORS support for frontend integration
-- ✅ PostgreSQL database with SQLAlchemy ORM
-- ✅ Database migrations with Flask-Migrate
-- ✅ Environment-based configuration (dev/prod)
+A full-stack permit management system for foreign vehicles entering Singapore. These drivers apply for entry permits, upload supporting documents and receive a scannable QR code. LTA officers review applications and scan QR codes at checkpoints (i.e. Woodlands, Tuas).
 
 ---
 
-## System Requirements
+## System Overview
 
-- Python 3.8+
-- PostgreSQL 12+ (or SQLite for development)
-- pip and virtualenv
-
-### Platform-Specific Setup
-
-**macOS:**
-```bash
-# Install Homebrew if not already installed
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Install Python 3 and PostgreSQL
-brew install python@3.11
-brew install postgresql@15
-
-# Start PostgreSQL service
-brew services start postgresql@15
+```
+┌─────────────────────┐        ┌──────────────────────┐
+│   React Frontend    │◄─────►│   Flask REST API      │
+│   (Vite + Tailwind) │  JWT  │   /api/v1/...         │
+└─────────────────────┘        └──────────┬───────────┘
+                                           │ SQLAlchemy ORM
+                                           ▼
+                                ┌──────────────────────┐
+                                │     PostgreSQL DB     │
+                                │  (Docker container)   │
+                                └──────────────────────┘
 ```
 
-**Linux (Ubuntu/Debian):**
-```bash
-# Install Python and PostgreSQL
-sudo apt-get update
-sudo apt-get install python3.11 python3.11-venv postgresql postgresql-contrib
+### User Roles
 
-# Start PostgreSQL service
-sudo systemctl start postgresql
-```
+| Role | Description |
+|------|-------------|
+| **Driver** | Driver with foreign vehicle — submits permit applications, uploads documents, generates QR codes |
+| **Officer** | LTA officer — reviews applications, approves/rejects, scans QR codes at checkpoints |
 
-**Windows:**
-- Download and install Python from https://www.python.org
-- Download and install PostgreSQL from https://www.postgresql.org/download/windows/
-- Start PostgreSQL from Services (services.msc)
+---
+
+## Features
+
+**Driver Portal**
+- ✅ Multi-step application wizard (Vehicle Info → Documents → Payment & Review)
+- ✅ Document uploads: vehicle photos, IC/passport, employment pass, registration cert, road tax, insurance cert
+- ✅ Real-time application status dashboard
+- ✅ QR code generation for approved permits
+- ✅ Permit expiry tracking and notifications
+
+**Officer Portal**
+- ✅ Application review queue
+- ✅ Approve / reject with decision reason
+- ✅ QR code scanning at checkpoints
+- ✅ Crossing log with location, device, and timestamp
+
+**Auth & Security**
+- ✅ Role-based access control (Driver / Officer)
+- ✅ JWT access tokens (1 hour expiry)
+- ✅ Refresh tokens in HTTP-only cookies (7 days)
+- ✅ bcrypt password hashing (12 rounds)
+- ✅ QR token hashing — raw tokens never stored
+- ✅ Full QR issuance and scan audit trail
+
+---
+
+## Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (required)
+- No local Python or PostgreSQL installation needed — Docker handles everything
 
 ---
 
 ## Quick Start
 
-### 1. Clone and Setup Virtual Environment
+### 1. Clone the repository
 
 ```bash
-# Navigate to project directory
-cd vehicle_backend
-
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
-# On macOS/Linux:
-source venv/bin/activate
-
-# On Windows:
-venv\Scripts\activate
+git clone <repo-url>
+cd AGILE-VEP-BACKEND
 ```
 
-### 2. Install Dependencies
+### 2. Configure environment variables
 
 ```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment Variables
-
-```bash
-# Copy example environment file
 cp .env.example .env
-
-# Edit .env with your settings
-# On macOS/Linux:
-nano .env  # or use: vim .env, code .env, etc.
-
-# On Windows:
-notepad .env  # or use your preferred editor
 ```
 
-**Required `.env` variables:**
+Edit `.env` with your settings:
 
 ```env
-# Flask Configuration
+# Flask
 FLASK_APP=app
 FLASK_ENV=development
 SECRET_KEY=your-random-secret-key-change-in-production
 
-# Database (PostgreSQL)
-DATABASE_URL=postgresql://youruser:yourpassword@192.168.1.98:5432/vehicle_uat_db
+# Database — matches docker-compose.yml service name
+DATABASE_URL=postgresql://vep_user:vep_password@db:5432/vep_db
 
-# JWT Configuration
-JWT_SECRET_KEY=your-jwt-secret-key-change-in-production (can be anything)
+# JWT
+JWT_SECRET_KEY=your-jwt-secret-key-change-in-production
 JWT_ACCESS_TOKEN_EXPIRES=3600
 
-# CORS
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+# CORS — add your frontend origin
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
-### 4. Setup Database
+> **Note:** `db` in the `DATABASE_URL` refers to the PostgreSQL Docker service name defined in `docker-compose.yml`. Do not use `localhost` here.
 
-**For PostgreSQL on macOS:**
+### 3. Build and start all containers
 
 ```bash
-# Create database
-createdb vehicle_uat_db
-
-# Verify PostgreSQL is running
-pg_isready
-
-# Connect to PostgreSQL (optional - to verify)
-psql -U postgres -d vehicle_uat_db
+docker compose up --build
 ```
 
-**For PostgreSQL on Linux:**
+This starts three containers:
+- `db` — PostgreSQL 15
+- `backend` — Flask API on port `5000`
+- `frontend` — Vite dev server on port `5173`
+
+> On first run, Docker will pull base images and install dependencies. This takes 2–3 minutes.
+
+### 4. Seed the database
+
+In a separate terminal, while the containers are running:
 
 ```bash
-# Connect as postgres user
-sudo -u postgres psql
-
-# Inside psql shell:
-CREATE DATABASE vehicle_uat_db;
-\q  # Exit psql
+docker compose exec backend python seed.py
 ```
 
-**For PostgreSQL on Windows:**
+This creates all tables and populates demo users, vehicles, applications, and notifications.
 
-Ensure:
-- PostgreSQL is running (check Services)
-- Database `vehicle_uat_db` exists (create via pgAdmin if needed)
-- User `postgres` can connect with the password in `.env`
+**Demo credentials:**
 
-**For all platforms - Run migrations:**
+| Role | Email | Password |
+|------|-------|----------|
+| Driver | `mdriver1@gmail.com` | `password 1` |
+| Driver | `mdriver2@gmail.com` | `password 2` |
+| Driver | `mdriver3@gmail.com` | `password 3` |
+| Officer | `officer1@lta.gov.sg` | `password 1` |
+| Officer | `officer2@lta.gov.sg` | `password 2` |
+| Officer | `officer3@lta.gov.sg` | `password 3` |
+
+Driver 1 (`mdriver1`) has 5 seeded vehicles covering all status states: **Active**, **Expired insurance**, **Pending Review**, **Rejected**, and **Expiring Soon**.
+
+### 5. Open the app
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:5000 |
+| Swagger UI (dev only) | http://localhost:5000/api/docs |
+
+---
+
+## Stopping and restarting
 
 ```bash
-# Make sure virtual environment is activated
-# macOS/Linux:
-source venv/bin/activate
+# Stop containers (preserves data)
+docker compose down
 
-# Windows:
-venv\Scripts\activate
+# Stop and wipe the database volume (full reset)
+docker compose down -v
 
-# Then run migrations
-flask db migrate -m "Initial migration - users table"
-flask db upgrade
+# Restart without rebuilding
+docker compose up
 ```
 
-### 5. Run the Application
+---
 
-**Option 1: Using start.sh script (macOS/Linux)**
+## Database
+
+### Inspect tables (while containers are running)
 
 ```bash
-# Make start.sh executable (first time only)
-chmod +x start.sh
+# Connect to the PostgreSQL container
+docker compose exec db psql -U vep_user -d vep_db
 
-# Run the script
-./start.sh
+# Inside psql:
+\dt                      -- list all tables
+\d applications          -- describe a specific table
+\d users
+\d vehicles
+\q                       -- exit
 ```
 
+### Schema overview
+
+| Table | Description |
+|-------|-------------|
+| `users` | Drivers and officers with role, contact info, NRIC/passport |
+| `vehicles` | Malaysian vehicles linked to a driver |
+| `applications` | Permit applications with status lifecycle |
+| `payments` | Payment records linked to applications |
+| `notifications` | In-app notifications per user |
+| `qr_codes` | Issued QR credentials (hashed token, status, expiry) |
+| `qr_issue_audits` | Audit log of every QR generation event |
+| `qr_scan_logs` | Checkpoint scan log with officer, device, location, and result |
+
+### Application status lifecycle
+
+```
+DRAFT → SUBMITTED → PENDING_REVIEW → APPROVED
+                                   → REJECTED
+```
+
+### QR code status lifecycle
+
+```
+active → used      (consumed at checkpoint)
+       → expired   (past expiry timestamp)
+       → revoked   (manually invalidated)
+```
 
 ---
 
-## API Documentation
+## API Reference
 
-All endpoints are prefixed with `/api/v1/auth`
+All endpoints are prefixed with `/api/v1`.
 
-### Authentication Endpoints
+### Auth — `/api/v1/auth`
 
-1. **POST /register** - Register new user
-2. **POST /login** - Login and get access token
-3. **POST /refresh-token** - Refresh access token  
-4. **GET /me** - Get current user profile (requires token)
-5. **POST /logout** - Logout and revoke all refresh tokens (requires token)
+| Method | Endpoint | Description | Auth required |
+|--------|----------|-------------|---------------|
+| POST | `/register` | Register new user | No |
+| POST | `/login` | Login, returns JWT + sets refresh cookie | No |
+| POST | `/refresh-token` | Rotate access token using refresh cookie | Cookie |
+| GET | `/me` | Get current user profile | Bearer token |
+| POST | `/logout` | Revoke all refresh tokens | Bearer token |
 
----
+### Applications — `/api/v1/applications`
 
-## Authentication Endpoints
+| Method | Endpoint | Description | Auth required |
+|--------|----------|-------------|---------------|
+| GET | `/` | List applications (filtered by role) | Bearer token |
+| POST | `/` | Create application + vehicle in one call | Bearer token |
+| POST | `/:id/submit` | Submit a draft application | Bearer token |
+| PATCH | `/:id/review` | Approve or reject (officer only) | Bearer token |
 
-All endpoints return JSON responses with appropriate HTTP status codes.
+### Register example
 
-### 1. Register User
-
-**Endpoint:** `POST /api/v1/auth/register`
-
-**Postman Example:**
-```
-Method: POST
-URL: http://localhost:5000/api/v1/auth/register
-Headers: Content-Type: application/json
-Body (raw JSON):
-{
-  "email": "user@example.com",
-  "password": "securepassword123",
-  "full_name": "John Doe",
-  "phone_number": "+6591234567",
-  "nric_passport": "S1234567A"
-}
-```
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123",
-  "full_name": "John Doe",
-  "phone_number": "+6591234567",        // Optional
-  "nric_passport": "S1234567A"          // Optional
-}
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "driver@example.com",
+    "password": "securepass123",
+    "full_name": "Ahmad Ismail",
+    "phone_number": "+60123456789",
+    "nric_passport": "XXXXXX-XX-5432"
+  }'
 ```
 
-**Response (201 - Created):**
-```json
-{
-  "message": "Registration successful"
-}
-```
+### Login example
 
-**Status Codes:**
-- `201` - User registered successfully
-- `400` - Invalid input or missing required fields
-- `409` - Email already registered
-- `500` - Server error
-
-**Validation Rules:**
-- Email must be valid format
-- Password must be at least 8 characters
-- Email must be unique
-
----
-
-### 2. Login User
-
-**Endpoint:** `POST /api/v1/auth/login`
-
-**Postman Example:**
-```
-Method: POST
-URL: http://localhost:5000/api/v1/auth/login
-Headers: Content-Type: application/json
-Body (raw JSON):
-{
-  "email": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-**Response (200 - OK):**
-```json
-{
-  "message": "Login successful",
-  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "full_name": "John Doe",
-    "phone_number": "+6591234567",
-    "is_verified": false,
-    "created_at": "2026-01-30T10:30:00"
-  }
-}
-```
-
-**Cookies Set:**
-- `refreshToken` (HTTP-only, SameSite=Strict, expires in 7 days)
-
-**Status Codes:**
-- `200` - Login successful
-- `400` - Missing email or password
-- `401` - Invalid email or password
-- `403` - Account is disabled
-
-**Security Features:**
-- Password verified with bcrypt (12 rounds)
-- Refresh token stored in HTTP-only cookie (not accessible via JavaScript)
-- Prevents XSS attacks
-- CSRF protection via SameSite=Strict cookie attribute
-- Refresh token stored in database for revocation support
-
----
-
-### 3. Get Current User Profile
-
-**Endpoint:** `GET /api/v1/auth/me`
-
-**Postman Example:**
-```
-Method: GET
-URL: http://localhost:5000/api/v1/auth/me
-Headers:
-  - Authorization: Bearer <your_token_here>
-```
-
-**Response (200 - OK):**
-```json
-{
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "full_name": "John Doe",
-    "phone_number": "+6591234567",
-    "is_verified": false,
-    "created_at": "2026-01-30T10:30:00"
-  }
-}
-```
-
-**Status Codes:**
-- `200` - User profile retrieved
-- `401` - Unauthorized (invalid/missing token)
-- `404` - User not found
-
-**Authentication:**
-- Required: Bearer token in `Authorization` header
-- Token obtained from login response
-
----
-
-### 4. Refresh Access Token
-
-**Endpoint:** `POST /api/v1/auth/refresh-token`
-
-**Postman Example:**
-```
-Method: POST
-URL: http://localhost:5000/api/v1/auth/refresh-token
-Headers: 
-  - Content-Type: application/json
-Note: Postman automatically sends cookies
-```
-
-**Note:** The refresh token is automatically sent in the HTTP-only cookie. No manual header needed.
-
-**Response (200 - OK):**
-```json
-{
-  "message": "Token refreshed successfully",
-  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-**Cookies Updated:**
-- `refreshToken` - New refresh token set (expires in 7 days)
-
-**Status Codes:**
-- `200` - Token refreshed successfully
-- `401` - Invalid or expired refresh token
-- `500` - Server error
-
-**How It Works:**
-1. Client sends POST request with refresh token in cookie
-2. Server validates refresh token in database
-3. Server revokes old refresh token
-4. Server creates new access token and refresh token
-5. New refresh token set in cookie response
-
----
-
-### 5. Logout User
-
-**Endpoint:** `POST /api/v1/auth/logout`
-
-**Postman Example:**
-```
-Method: POST
-URL: http://localhost:5000/api/v1/auth/logout
-Headers:
-  - Authorization: Bearer <your_token_here>
-```
-
-**Response (200 - OK):**
-```json
-{
-  "message": "Logged out successfully"
-}
-```
-
-**Status Codes:**
-- `200` - Logout successful
-- `401` - Unauthorized (invalid/missing token)
-- `404` - User not found
-
-**What Happens:**
-- All refresh tokens for user are revoked in database
-- Refresh token cookie is deleted
-- Access token becomes invalid
-- User must login again to get new tokens
-
----
-
-## Architecture Overview
-
-This API follows a .NET Core Identity-inspired architecture:
-
-### Components
-
-1. **TokenProvider Service** (`app/services/token_provider.py`)
-   - Creates JWT access tokens (1 hour expiry)
-   - Manages refresh tokens in database
-   - Validates and revokes refresh tokens
-   - Equivalent to .NET's `TokenService`
-
-2. **User Model** (`app/models/user.py`)
-   - Core user data (email, password_hash, profile info)
-   - Relationship to refresh tokens
-   - to_dict() for serialization
-
-3. **RefreshToken Model** (`app/models/user.py`)
-   - Stores refresh tokens in database
-   - Tracks expiration and revocation status
-   - One-to-many relationship with User
-   - Enables token revocation support
-
-4. **Authentication Routes** (`app/api/v1/auth.py`)
-   - Register, Login, Refresh, Logout endpoints
-   - Leverages TokenProvider for token management
-   - HTTP-only cookie handling
-   - Comprehensive error handling
-
-### Token Flow
-
-```
-1. User registers → User created in DB
-2. User logs in → 
-   - Access token (JWT, 1hr, in response body)
-   - Refresh token (random string, 7 days, in DB + cookie)
-3. User accesses protected resource →
-   - Include access token in Authorization header
-4. Access token expires →
-   - POST /refresh-token with refresh token cookie
-   - New access token generated
-   - New refresh token generated
-5. User logs out →
-   - All refresh tokens revoked in database
-   - Cookie deleted
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "mdriver1@gmail.com", "password": "password 1"}'
 ```
 
 ---
@@ -464,314 +253,163 @@ This API follows a .NET Core Identity-inspired architecture:
 ## Project Structure
 
 ```
-vehicle_backend/
-├── app/
-│   ├── __init__.py              # Flask app factory, Swagger UI setup
-│   ├── config.py                # Configuration classes (dev/prod)
-│   ├── extensions.py            # Flask extensions (DB, JWT, Bcrypt, etc.)
+AGILE-VEP-BACKEND/
+├── frontend/                        # React + Vite frontend
+│   ├── api/                         # API service layer
+│   ├── Auth/                        # Auth context and hooks
+│   ├── components/                  # Shared UI components
+│   ├── context/                     # React context providers
+│   ├── pages/                       # Page components
+│   │   ├── Dashboard.tsx            # Driver dashboard with permit status table
+│   │   └── ApplicationWizard.tsx    # 3-step application form
+│   ├── services/                    # Frontend service utilities
+│   ├── public/
+│   │   └── favicon.svg              # Car favicon
+│   ├── App.tsx
+│   ├── index.html
+│   ├── index.tsx
+│   ├── types.ts
+│   └── vite.config.ts
+├── app/                             # Flask application
+│   ├── __init__.py                  # App factory
+│   ├── config.py                    # Dev / prod configuration
+│   ├── extensions.py                # DB, JWT, bcrypt extensions
 │   ├── models/
-│   │   ├── __init__.py
-│   │   └── user.py              # User database model
-│   └── api/
-│       ├── __init__.py
-│       └── v1/
-│           ├── __init__.py      # Blueprint registration
-│           └── auth.py          # Authentication endpoints
-├── migrations/                  # Database migration scripts
-├── .env                         # Environment variables (not in git)
-├── .env.example                 # Example environment template
-├── .flaskenv                    # Flask CLI environment variables
-├── .gitignore
-├── requirements.txt             # Python dependencies
-├── swagger.json                 # Swagger/OpenAPI specification
-├── start.sh                     # Startup script
-├── run.py                       # Alternative startup script
-└── README.md                    # This file
+│   │   ├── user.py                  # User model (Driver / Officer roles)
+│   │   ├── vehicle.py               # Vehicle model
+│   │   ├── application.py           # Application + status lifecycle
+│   │   ├── payment.py               # Payment records
+│   │   └── notification.py          # Notifications
+│   └── api/v1/
+│       ├── auth.py                  # Auth endpoints
+│       └── applications.py          # Application endpoints
+├── migrations/                      # Flask-Migrate scripts
+├── services/                        # Backend service layer
+├── seed.py                          # Database seeder
+├── run.py                           # Flask entrypoint
+├── docker-compose.yml
+├── Dockerfile
+├── entrypoint.sh
+├── requirements.txt
+├── .env                             # Local env vars (not in git)
+├── .env.example
+└── README.md
 ```
 
 ---
 
 ## Environment Configuration
 
-### Configuration Hierarchy
-
-1. **Base Config** (`config.py` - `Config` class)
-   - Applied to all environments
-   - JWT settings, CORS configuration
-
-2. **Development Config** (`DevelopmentConfig`)
-   - `DEBUG = True`
-   - SQL logging enabled
-   - Swagger UI available
-
-3. **Production Config** (`ProductionConfig`)
-   - `DEBUG = False`
-   - SQL logging disabled
-   - Swagger UI disabled
-   - Requires `DATABASE_URL` in environment
-
-### JWT Configuration
+### JWT settings
 
 ```python
-JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour
-JWT_REFRESH_TOKEN_EXPIRES = 30 days
-JWT_TOKEN_LOCATION = ['headers', 'cookies']
-JWT_COOKIE_SECURE = True         # HTTPS only
-JWT_COOKIE_HTTPONLY = True       # JS cannot access
-JWT_COOKIE_SAMESITE = 'Lax'      # CSRF protection
+JWT_ACCESS_TOKEN_EXPIRES  = 3600      # 1 hour
+JWT_REFRESH_TOKEN_EXPIRES = 604800    # 7 days
+JWT_TOKEN_LOCATION        = ['headers', 'cookies']
+JWT_COOKIE_SECURE         = True      # HTTPS only (set False in dev)
+JWT_COOKIE_HTTPONLY       = True      # Not accessible via JavaScript
+JWT_COOKIE_SAMESITE       = 'Strict'  # CSRF protection
 ```
+
+### Config hierarchy
+
+1. **Base Config** — JWT settings, CORS, common values
+2. **DevelopmentConfig** — `DEBUG=True`, SQL logging, Swagger UI enabled
+3. **ProductionConfig** — `DEBUG=False`, Swagger disabled, requires `DATABASE_URL`
 
 ---
 
 ## Common Issues
 
-### Issue: Database Connection Error
+### Containers fail to start — port already in use
 
-**Error:** `connection to server at "192.168.1.98", port 5432 failed`
-
-**Solutions:**
-1. Ensure PostgreSQL is running on Windows
-2. Check PostgreSQL configuration:
-   - `listen_addresses = '*'` in postgresql.conf
-   - Add firewall rule for port 5432
-   - Update `pg_hba.conf` to allow remote connections
-3. Verify DATABASE_URL in .env is correct
-4. Test connection: `psql -U postgres -h 192.168.1.98`
-
-### Issue: "ModuleNotFoundError: No module named 'psycopg2'"
-
-**Solution:**
 ```bash
-# Activate virtual environment first
-source venv/bin/activate
-│   ├── config.py                # Configuration classes (dev/prod)
-│   ├── extensions.py            # Flask extensions (DB, JWT, Bcrypt, etc.)
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── user.py              # User and RefreshToken models
-│   ├── services/
-│   │   ├── __init__.py
-│   │   └── token_provider.py    # TokenProvider service (equivalent to .NET)
-│   └── api/
-│       ├── __init__.py
-│       └── v1/
-│           ├── __init__.py      # Blueprint registration
-│           └── auth.py          # Authentication endpoints
-├── migrations/                  # Database migration scripts
-├── .env                         # Environment variables (not in git)
-├── .env.example                 # Example environment template
-├── .flaskenv                    # Flask CLI environment variables
-├── .gitignore
-├── requirements.txt             # Python dependencies
-4. Check token wasn't modified
+# Check what's using port 5000 or 5173
+lsof -i :5000
+lsof -i :5173
 
-### Issue: Swagger UI not accessible at /api/docs
+# Kill the process or change the port mapping in docker-compose.yml
+```
 
-**Causes:**
-1. Running in production mode: Set `FLASK_ENV=development`
-2. Flask app not reloaded: Restart the server
-3. Check if error in app initialization
+### Database connection error inside the container
+
+Ensure `DATABASE_URL` uses the Docker service name `db`, not `localhost`:
+
+```env
+# ✅ Correct
+DATABASE_URL=postgresql://vep_user:vep_password@db:5432/vep_db
+
+# ❌ Wrong — localhost doesn't resolve to the db container
+DATABASE_URL=postgresql://vep_user:vep_password@localhost:5432/vep_db
+```
+
+### Changes not reflected after editing code
+
+The frontend Vite dev server supports hot reload automatically. For backend changes:
+
+```bash
+docker compose restart backend
+```
+
+### Full reset (wipe all data and rebuild)
+
+```bash
+docker compose down -v --rmi local
+docker compose up --build
+docker compose exec backend python seed.py
+```
+
+### Swagger UI not loading
+
+Swagger is only available in development mode. Ensure `.env` has:
+
+```env
+FLASK_ENV=development
+```
 
 ---
 
-## Database Schema
+## Security Notes
 
-### Users Table
-
-```sql,
-    email VARCHAR(120) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    full_name VARCHAR(100) NOT NULL,
-    phone_number VARCHAR(20),
-    nric_passport VARCHAR(20) UNIQUE,
-    is_active BOOLEAN DEFAULT TRUE,
-    is_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX(email)
-);
-```
-
-### Refresh Tokens Table
-
-```sql
-CREATE TABLE refresh_tokens (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER NOT NULL FOREIGN KEY references users(id),
-    token VARCHAR(500) UNIQUE NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    is_revoked BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-**Why database-backed refresh tokens?**
-- Token revocation support (logout invalidates all tokens)
-- Token reuse detection (security feature)
-- Audit trail (track when tokens created/revoked)
-- .NET Identity pattern compatibility_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour
-JWT_REFRESH_TOKEN_EXPIRES = 604800  # 7 days (via database)
-JWT_TOKEN_LOCATION = ['headers']  # Access token in Authorization header
-JWT_HEADER_NAME = 'Authorization'
-JWT_HEADER_TYPE = 'Bearer'
-JWT_COOKIE_SECURE = False  # True in production (HTTPS)
-JWT_COOKIE_HTTPONLY = True  # Cannot access via JavaScript
-JWT_COOKIE_SAMESITE = 'Strict'  # CSRF protection
-```
-
-**Note:** 
-- Access tokens are JWT tokens stored in memory/localStorage (1 hour)
-- Refresh tokens are random strings stored in database and HTTP-only cookies (7 days)
-- Refresh tokens in database enable revocation and logout functionalitySecurity Considerations
-
-### Password Security
-- ✅ Hashed with bcrypt (12 rounds)
-- ✅ Minimum 8 characters required
-- ✅ Never stored or logged in plain text
-
-### Token Security
-- ✅ JWT tokens signed with secret key
-- ✅ Access token expires in 1 hour
-- ✅ Refresh token expires in 30 days
-- ✅ Refresh token stored in HTTP-only cookie
-- ✅ Cannot be accessed by JavaScript (prevents XSS)
-
-### Communication Security
-- ✅ HTTPS required for production (JWT_COOKIE_SECURE=True)
-- ✅ CSRF protection via SameSite=Lax
-- ✅ CORS enabled only for specified origins
-
-### Data Protection
-- ✅ Email and NRIC/Passport are unique (no duplicates)
-- ✅ Account can be disabled (is_active flag)
-- ✅ User verification tracking (is_verified flag)
-- ✅ Timestamps for audit trail
+| Area | Implementation |
+|------|----------------|
+| Passwords | bcrypt, 12 rounds, never logged |
+| Access tokens | JWT, signed, 1 hour TTL |
+| Refresh tokens | Random string, stored in DB + HTTP-only cookie, revocable |
+| QR tokens | SHA-256 hashed before storage — raw token never persisted |
+| QR scanning | Full audit log per scan (officer, device, location, latency, result) |
+| CORS | Restricted to origins in `ALLOWED_ORIGINS` |
+| HTTPS | `JWT_COOKIE_SECURE=True` enforced in production |
 
 ---
 
-## Performance Tips
+## Production Checklist
 
-1. **Database Indexing**
-   - Email column is indexed for faster lookups
-   - Unique constraints prevent duplicate entries
-
-2. **Token Caching**
-   - Access tokens are short-lived (1 hour)
-   - Consider caching user data to reduce DB queries
-
-3. **CORS Optimization**
-   - Only allow necessary origins in CORS config
-   - Reduces unnecessary preflight requests
-
----
-
-## Deployment
-
-### Production Checklist
-
-Before deploying to production:
-
-- [ ] Change all secrets in `.env` (SECRET_KEY, JWT_SECRET_KEY)
+- [ ] Rotate all secrets in `.env` (`SECRET_KEY`, `JWT_SECRET_KEY`)
 - [ ] Set `FLASK_ENV=production`
-- [ ] Enable HTTPS (JWT_COOKIE_SECURE=True)
-- [ ] Use strong, random SECRET_KEY (min 32 chars)
-- [ ] Configure proper database with backups
-- [ ] Enable error logging and monitoring
-- [ ] Test all endpoints thoroughly
-- [ ] Set up rate limiting
-- [ ] Configure CORS for frontend domain only
-- [ ] Use environment-based configuration
-
-### Heroku Deployment Example
-
-```bash
-# Create Procfile
-echo "web: gunicorn run:app" > Procfile
-
-# Create runtime.txt
-echo "python-3.11.0" > runtime.txt
-
-# Deploy
-git push heroku main
-```
+- [ ] Set `JWT_COOKIE_SECURE=True`
+- [ ] Configure `ALLOWED_ORIGINS` to frontend domain only
+- [ ] Enable HTTPS / TLS termination
+- [ ] Set up database backups
+- [ ] Configure error logging and monitoring
+- [ ] Enable rate limiting (Flask-Limiter)
+- [ ] Disable Swagger UI
 
 ---
 
-## Next Steps & Future Features
+## Useful Links
 
-- [ ] Email verification workflow
-- [ ] Password reset functionality
-- [ ] Two-factor authentication (2FA)
-- [ ] OAuth2/Social login integration
-- [ ] Token blacklisting with Redis
-- [ ] Rate limiting (Flask-Limiter)
-- [ ] Audit logging
-- [ ] User profile update endpoint
-- [ ] Admin dashboard
-- [ ] Unit and integration tests
-
----
-
-## Troubleshooting
-
-### Enable Debug Logging
-
-**macOS/Linux:**
-```bash
-export FLASK_DEBUG=1
-export FLASK_ENV=development
-flask run
-```
-
-**Windows (Command Prompt):**
-```cmd
-set FLASK_DEBUG=1
-set FLASK_ENV=development
-flask run
-```
-
-**Windows (PowerShell):**
-```powershell
-$env:FLASK_DEBUG="1"
-$env:FLASK_ENV="development"
-flask run
-```
-
-### Check Flask App
-
-```bash
-# Verify app structure
-python -c "from app import create_app; app = create_app(); print(app.url_map)"
-```
-
-### Test Database Connection
-
-```bash
-python -c "from app import create_app, db; app = create_app(); with app.app_context(): db.create_all(); print('DB OK')"
-```
-
----
-
-## Support & Documentation
-
-- **Flask-JWT-Extended Docs**: https://flask-jwt-extended.readthedocs.io/
-- **Flask Documentation**: https://flask.palletsprojects.com/
-- **SQLAlchemy ORM**: https://docs.sqlalchemy.org/
-- **PostgreSQL Docs**: https://www.postgresql.org/docs/
-
----
-
-## License
-
-MIT License - See LICENSE file for details
+- [Flask Documentation](https://flask.palletsprojects.com/)
+- [Flask-JWT-Extended](https://flask-jwt-extended.readthedocs.io/)
+- [SQLAlchemy ORM](https://docs.sqlalchemy.org/)
+- [Vite](https://vitejs.dev/)
+- [Docker Compose](https://docs.docker.com/compose/)
 
 ---
 
 ## Version History
 
-- **v1.0.0** (2024-01-15)
-  - Initial release
-  - User registration and login
-  - JWT authentication with cookie storage
-  - Swagger UI API documentation
-  - PostgreSQL database integration
+| Version | Date | Notes |
+|---------|------|-------|
+| v1.0.0 | 2024-01-15 | Initial release — auth API, JWT, PostgreSQL |
+| v2.0.0 | 2026-03-14 | Full VEP system — driver portal, officer portal, document uploads, QR generation and scanning, Docker deployment |

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Body -->
+  <rect x="3" y="14" width="26" height="11" rx="3" fill="#059669"/>
+  <!-- Cabin -->
+  <path d="M9 14 L11 8 Q12 6 14 6 L18 6 Q20 6 21 8 L23 14 Z" fill="#047857"/>
+  <!-- Windows -->
+  <path d="M12.5 13.5 L13.5 9 Q14 8 15 8 L17 8 Q18 8 18.5 9 L19.5 13.5 Z" fill="#a7f3d0"/>
+  <!-- Wheels -->
+  <circle cx="9" cy="25" r="4" fill="#1e293b"/>
+  <circle cx="9" cy="25" r="2" fill="#475569"/>
+  <circle cx="23" cy="25" r="4" fill="#1e293b"/>
+  <circle cx="23" cy="25" r="2" fill="#475569"/>
+  <!-- Headlight -->
+  <rect x="27" y="17" width="2" height="3" rx="1" fill="#fde68a"/>
+  <!-- Tail light -->
+  <rect x="3" y="17" width="2" height="3" rx="1" fill="#fca5a5"/>
+</svg>
