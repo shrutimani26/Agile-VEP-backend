@@ -9,7 +9,6 @@ from alembic import op
 import sqlalchemy as sa
 
 
-# revision identifiers, used by Alembic.
 revision = '356b9e912fd6'
 down_revision = None
 branch_labels = None
@@ -19,7 +18,6 @@ depends_on = None
 def upgrade():
     conn = op.get_bind()
 
-    # Check if tables already exist — if so, just stamp and skip
     existing = conn.execute(sa.text(
         "SELECT tablename FROM pg_tables WHERE schemaname='public'"
     )).fetchall()
@@ -29,14 +27,14 @@ def upgrade():
         print("Tables already exist — skipping migration, stamping version only.")
         return
 
-    # Create enum types safely
+    # Create all enum types safely
     enums = [
         ("userrole",          "'DRIVER', 'OFFICER'"),
         ("paymentstatus",     "'PENDING', 'PAID', 'FAILED'"),
         ("documenttype",      "'LOG_CARD', 'INSURANCE', 'ID'"),
         ("crossingdirection", "'ENTRY', 'EXIT'"),
         ("crossingresult",    "'SUCCESS', 'FAIL'"),
-        ("applicationstatus", "'SUBMITTED', 'PENDING_REVIEW', 'APPROVED', 'REJECTED'"),
+        ("applicationstatus", "'DRAFT', 'SUBMITTED', 'PENDING_REVIEW', 'APPROVED', 'REJECTED', 'EXPIRED'"),
         ("qrstatus",          "'ACTIVE', 'USED', 'EXPIRED', 'REVOKED'"),
     ]
     for name, values in enums:
@@ -48,10 +46,10 @@ def upgrade():
             END $$;
         """)
 
-    # Creating tables
+    # users — use VARCHAR then ALTER to enum
     op.create_table('users',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('role', sa.Enum('DRIVER', 'OFFICER', name='userrole', create_type=False), nullable=False),
+        sa.Column('role', sa.String(length=20), nullable=False),
         sa.Column('email', sa.String(length=120), nullable=False),
         sa.Column('password_hash', sa.String(length=255), nullable=False),
         sa.Column('full_name', sa.String(length=100), nullable=False),
@@ -64,6 +62,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('nric_passport')
     )
+    op.execute("ALTER TABLE users ALTER COLUMN role TYPE userrole USING role::userrole")
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
 
@@ -109,12 +108,13 @@ def upgrade():
     with op.batch_alter_table('vehicles', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_vehicles_plate_no'), ['plate_no'], unique=True)
 
+    # applications — use VARCHAR then ALTER for both enum columns
     op.create_table('applications',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('vehicle_id', sa.Integer(), nullable=False),
-        sa.Column('status', sa.Enum('DRAFT', 'SUBMITTED', 'PENDING_REVIEW', 'APPROVED', 'REJECTED', 'EXPIRED', name='applicationstatus', create_type=False), nullable=False),
-        sa.Column('payment_status', sa.Enum('PENDING', 'PAID', 'FAILED', name='paymentstatus', create_type=False), nullable=False),
+        sa.Column('status', sa.String(length=20), nullable=False),
+        sa.Column('payment_status', sa.String(length=20), nullable=False),
         sa.Column('submitted_at', sa.DateTime(), nullable=True),
         sa.Column('reviewed_at', sa.DateTime(), nullable=True),
         sa.Column('decision_reason', sa.Text(), nullable=True),
@@ -125,15 +125,18 @@ def upgrade():
         sa.ForeignKeyConstraint(['vehicle_id'], ['vehicles.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
+    op.execute("ALTER TABLE applications ALTER COLUMN status TYPE applicationstatus USING status::applicationstatus")
+    op.execute("ALTER TABLE applications ALTER COLUMN payment_status TYPE paymentstatus USING payment_status::paymentstatus")
 
+    # crossings — use VARCHAR then ALTER for enum columns
     op.create_table('crossings',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('application_id', sa.Integer(), nullable=False),
         sa.Column('vehicle_id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('direction', sa.Enum('ENTRY', 'EXIT', name='crossingdirection', create_type=False), nullable=False),
+        sa.Column('direction', sa.String(length=20), nullable=False),
         sa.Column('checkpoint', sa.String(length=100), nullable=False),
-        sa.Column('result', sa.Enum('SUCCESS', 'FAIL', name='crossingresult', create_type=False), nullable=False),
+        sa.Column('result', sa.String(length=20), nullable=False),
         sa.Column('fail_reason', sa.Text(), nullable=True),
         sa.Column('timestamp', sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(['application_id'], ['applications.id'], ),
@@ -141,11 +144,14 @@ def upgrade():
         sa.ForeignKeyConstraint(['vehicle_id'], ['vehicles.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
+    op.execute("ALTER TABLE crossings ALTER COLUMN direction TYPE crossingdirection USING direction::crossingdirection")
+    op.execute("ALTER TABLE crossings ALTER COLUMN result TYPE crossingresult USING result::crossingresult")
 
+    # document_metadata — use VARCHAR then ALTER for enum column
     op.create_table('document_metadata',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('application_id', sa.Integer(), nullable=False),
-        sa.Column('type', sa.Enum('LOG_CARD', 'INSURANCE', 'ID', name='documenttype', create_type=False), nullable=False),
+        sa.Column('type', sa.String(length=20), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('size', sa.Integer(), nullable=False),
         sa.Column('file_path', sa.String(length=500), nullable=True),
@@ -153,13 +159,15 @@ def upgrade():
         sa.ForeignKeyConstraint(['application_id'], ['applications.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
+    op.execute("ALTER TABLE document_metadata ALTER COLUMN type TYPE documenttype USING type::documenttype")
 
+    # payments — use VARCHAR then ALTER for enum column
     op.create_table('payments',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('application_id', sa.Integer(), nullable=False),
         sa.Column('amount', sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column('currency', sa.String(length=3), nullable=False),
-        sa.Column('status', sa.Enum('PENDING', 'PAID', 'FAILED', name='paymentstatus', create_type=False), nullable=False),
+        sa.Column('status', sa.String(length=20), nullable=False),
         sa.Column('payment_method', sa.String(length=50), nullable=True),
         sa.Column('transaction_id', sa.String(length=100), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
@@ -168,9 +176,10 @@ def upgrade():
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('transaction_id')
     )
+    op.execute("ALTER TABLE payments ALTER COLUMN status TYPE paymentstatus USING status::paymentstatus")
+
 
 def downgrade():
-    # Drop tables first in reverse dependency order
     op.drop_table('payments')
     op.drop_table('document_metadata')
     op.drop_table('crossings')
@@ -184,7 +193,6 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_users_email'))
     op.drop_table('users')
 
-    # Drop enum types after all tables are gone
     op.execute("DROP TYPE IF EXISTS userrole CASCADE")
     op.execute("DROP TYPE IF EXISTS paymentstatus CASCADE")
     op.execute("DROP TYPE IF EXISTS documenttype CASCADE")
