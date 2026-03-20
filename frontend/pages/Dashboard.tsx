@@ -116,9 +116,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     {getApplicationDate(app)}
                   </td>
                   <td className="px-6 py-4">
+                  <div className="relative group">
                     <button
-                      onClick={() => navigate(`/driver/applications/${app.id}`)}
-                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                      disabled
+                      className="px-3 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed flex items-center gap-1"
+                      title="Application details coming soon"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -126,7 +128,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                       </svg>
                       View Details
                     </button>
-                  </td>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                      Coming soon
+                    </div>
+                  </div>
+                </td>
                 </tr>
               ))}
               {apps.length === 0 && (
