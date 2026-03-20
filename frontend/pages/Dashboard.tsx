@@ -42,6 +42,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     { label: 'Vehicles', value: apps.filter(a => a.vehicle).length, cardClass: 'border-2 border-blue-100 bg-blue-50', labelClass: 'text-blue-700', valueClass: 'text-blue-900' },
   ];
 
+  // Helper function to get application date (using submittedAt or createdAt)
+  const getApplicationDate = (app: Application): string => {
+    const date = app.submittedAt || app.createdAt;
+    return date ? new Date(date).toLocaleDateString() : '-';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -60,19 +66,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
 
   return (
     <div className="space-y-8">
-      {/* Stats */}
-      {/* <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6">Overview</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {stats.map(stat => (
-            <div key={stat.label} className={`p-4 rounded-xl ${stat.cardClass}`}>
-              <p className={`${stat.labelClass} text-sm font-semibold uppercase tracking-wider`}>{stat.label}</p>
-              <p className={`text-3xl font-bold ${stat.valueClass}`}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
-      </section> */}
-
       <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-3xl font-extrabold text-slate-900">Applications</h2>
@@ -92,12 +85,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
       <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-6 border-b flex items-center justify-between">
           <h3 className="text-lg font-bold">Current Status</h3>
-          {/* <button
-            onClick={() => navigate('/driver/new-application')}
-            className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-colors"
-          >
-            + New Application
-          </button> */}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -105,15 +92,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
               <tr>
                 <th className="px-6 py-4 font-semibold">Vehicle</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Submitted At</th>
-                <th className="px-6 py-4 font-semibold">Valid Until</th>
+                <th className="px-6 py-4 font-semibold">Date of Application</th>
+                <th className="px-6 py-4 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {apps.map(app => (
                 <tr key={app.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4">
-                    {/* ← use nested vehicle directly from app */}
                     <p className="font-bold text-slate-900">{app.vehicle?.plateNo || 'N/A'}</p>
                     <p className="text-xs text-slate-500">{app.vehicle?.make} {app.vehicle?.model}</p>
                   </td>
@@ -127,10 +113,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600">
-                    {app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : '-'}
+                    {getApplicationDate(app)}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {app.expiryDate ? new Date(app.expiryDate).toLocaleDateString() : 'N/A'}
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => navigate(`/driver/applications/${app.id}`)}
+                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      View Details
+                    </button>
                   </td>
                 </tr>
               ))}
