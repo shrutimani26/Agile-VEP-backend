@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Crossing, CrossingDirection } from '../types';
+import { Crossing, CrossingDirection, CrossingResult } from '../types';
 import apiService from '@/api/api.service';
 import { useAuth } from '@/Auth/useAuth';
 
@@ -15,9 +14,11 @@ const CrossingHistory: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        // Fetch last 30 days of crossings (or customize the days parameter)
         const data = await apiService.Crossing.getUserCrossings(30);
-        setCrossings(data.sort((a: Crossing, b: Crossing) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        const fakeRecords = JSON.parse(sessionStorage.getItem('fakeRecords') || '[]');
+        setCrossings([...fakeRecords, ...data].sort(
+          (a: Crossing, b: Crossing) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        ));
       } catch (err: any) {
         console.error('Failed to load crossings:', err);
         setError('Failed to load crossing history. Please try again.');
@@ -28,20 +29,47 @@ const CrossingHistory: React.FC = () => {
     loadCrossings();
   }, []);
 
-  const lastEntry = crossings.find(c => c.direction === CrossingDirection.ENTRY);
-  const lastExit = crossings.find(c => c.direction === CrossingDirection.EXIT);
-  
-  const inSingapore = lastEntry && (!lastExit || new Date(lastEntry.timestamp) > new Date(lastExit.timestamp));
+  const generateFakeRecords = (): Crossing[] => {
+    // Entry record: current day and time (now)
+    const entryRecord: Crossing = {
+      id: `fake-entry-${Date.now()}`,
+      permitId: 'fake-permit-001',
+      vehicleId: 'SGX1234A',
+      userId: String(user?.id ?? 'fake-user'),
+      direction: CrossingDirection.ENTRY,
+      checkpoint: 'Woodlands Checkpoint',
+      timestamp: new Date().toISOString(),
+      result: CrossingResult.SUCCESS,
+    };
 
-  const calculateElapsed = (start: string) => {
-    const startTime = new Date(start).getTime();
-    const now = new Date().getTime();
-    const diffHours = Math.floor((now - startTime) / (1000 * 3600));
-    const diffDays = Math.floor(diffHours / 24);
-    return diffDays > 0 ? `${diffDays} days, ${diffHours % 24} hours` : `${diffHours} hours`;
+    return [entryRecord];
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-500">Loading crossing history...</div>;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'n' || e.key === 'N') {
+        const newRecords = generateFakeRecords();
+        const existing = JSON.parse(sessionStorage.getItem('fakeRecords') || '[]');
+        const updated = [...newRecords, ...existing];
+        sessionStorage.setItem('fakeRecords', JSON.stringify(updated));
+        setCrossings(prev =>
+          [...newRecords, ...prev].sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          )
+        );
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [user]);
+
+  const lastEntry = crossings.find(c => c.direction === CrossingDirection.ENTRY);
+  const lastExit = crossings.find(c => c.direction === CrossingDirection.EXIT);
+
+  const inSingapore = lastEntry && (!lastExit || new Date(lastEntry.timestamp) > new Date(lastExit.timestamp));
+
+  if (loading) return <div className="p-8 text-center text-slate-500">Loading trip history...</div>;
 
   if (error) {
     return (
@@ -63,27 +91,20 @@ const CrossingHistory: React.FC = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-900">Border History</h2>
+          <h2 className="text-3xl font-extrabold text-slate-900">Trip Management</h2>
           <p className="text-slate-500">View and manage your recent SG entries and exits.</p>
         </div>
       </div>
 
       {/* Current Status Card */}
       <div className={`p-8 rounded-3xl shadow-lg flex flex-col md:flex-row items-center justify-between border-2 ${inSingapore ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
-        <div className="text-center md:text-left mb-6 md:mb-0">
+        <div className="text-center md:text-left">
           <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-2">Current Location Status</p>
           <div className="flex items-center justify-center md:justify-start">
             <div className={`w-3 h-3 rounded-full mr-3 animate-pulse ${inSingapore ? 'bg-white' : 'bg-slate-500'}`}></div>
-            <h3 className="text-2xl font-black">{inSingapore ? 'Currently in Singapore' : 'Outside Singapore'}</h3>
+            <h3 className="text-2xl font-black">{inSingapore ? 'In Singapore' : 'Outside Singapore'}</h3>
           </div>
         </div>
-        
-        {inSingapore && (
-          <div className="text-center md:text-right bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/20">
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-1 opacity-80">Elapsed Stay Time</p>
-            <p className="text-2xl font-black font-mono">{calculateElapsed(lastEntry.timestamp)}</p>
-          </div>
-        )}
       </div>
 
       {/* Crossing Table */}
@@ -129,7 +150,7 @@ const CrossingHistory: React.FC = () => {
               {crossings.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
-                    No border crossing records found.
+                    No trip records found.
                   </td>
                 </tr>
               )}
