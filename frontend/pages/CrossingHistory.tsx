@@ -29,8 +29,26 @@ const CrossingHistory: React.FC = () => {
     loadCrossings();
   }, []);
 
+  //beep sound for testing!
+
+  const playBeep = () => {
+    const audioCtx = new AudioContext();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // pitch
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);        // volume
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3); // fade out
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.3); // 0.3 seconds long
+  };
+
   const generateFakeRecords = (): Crossing[] => {
-    // Entry record: current day and time (now)
     const entryRecord: Crossing = {
       id: `fake-entry-${Date.now()}`,
       permitId: 'fake-permit-001',
@@ -48,6 +66,7 @@ const CrossingHistory: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'n' || e.key === 'N') {
+        playBeep();
         const newRecords = generateFakeRecords();
         const existing = JSON.parse(sessionStorage.getItem('fakeRecords') || '[]');
         const updated = [...newRecords, ...existing];
@@ -102,7 +121,7 @@ const CrossingHistory: React.FC = () => {
           <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-2">Current Location Status</p>
           <div className="flex items-center justify-center md:justify-start">
             <div className={`w-3 h-3 rounded-full mr-3 animate-pulse ${inSingapore ? 'bg-white' : 'bg-slate-500'}`}></div>
-            <h3 className="text-2xl font-black">{inSingapore ? 'In Singapore With SGX1234A' : 'Outside Singapore'}</h3>
+            <h3 className="text-2xl font-black">{inSingapore ? 'Currently in Singapore' : 'Outside Singapore'}</h3>
           </div>
         </div>
       </div>
