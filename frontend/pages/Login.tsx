@@ -103,8 +103,8 @@ const Login: React.FC<LoginProps> = ({ role }) => {
             </>
           )}
           <div className="mt-6 pt-6 border-t border-slate-100">
-            {/* <p className="text-xs text-slate-400 text-center uppercase tracking-widest font-bold">Available Demo Credentials</p> */}
-            {/* <div className="mt-4 p-4 bg-slate-50 rounded-lg text-[10px] space-y-3">
+            <p className="text-xs text-slate-400 text-center uppercase tracking-widest font-bold">Available Demo Credentials</p>
+            <div className="mt-4 p-4 bg-slate-50 rounded-lg text-[10px] space-y-3">
               {role === UserRole.DRIVER ? (
                 <>
                   <p><span className="font-bold">Driver 1:</span> mdriver1@gmail.com / password 1</p>
@@ -118,7 +118,7 @@ const Login: React.FC<LoginProps> = ({ role }) => {
                   <p><span className="font-bold">Officer 3:</span> officer3@lta.gov.sg / password 3</p>
                 </>
               )}
-            </div> */}
+            </div>
           </div>
         </div>
       </div>
