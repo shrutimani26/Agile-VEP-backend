@@ -102,7 +102,7 @@ const CrossingHistory: React.FC = () => {
           <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-2">Current Location Status</p>
           <div className="flex items-center justify-center md:justify-start">
             <div className={`w-3 h-3 rounded-full mr-3 animate-pulse ${inSingapore ? 'bg-white' : 'bg-slate-500'}`}></div>
-            <h3 className="text-2xl font-black">{inSingapore ? 'In Singapore' : 'Outside Singapore'}</h3>
+            <h3 className="text-2xl font-black">{inSingapore ? 'In Singapore With SGX1234A' : 'Outside Singapore'}</h3>
           </div>
         </div>
       </div>
