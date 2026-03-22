@@ -32,21 +32,21 @@ const CrossingHistory: React.FC = () => {
   //beep sound for testing!
 
   const playBeep = () => {
-    const audioCtx = new AudioContext();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+  const audioCtx = new AudioContext();
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // pitch
-    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);        // volume
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3); // fade out
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(1480, audioCtx.currentTime); 
+  gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15); 
 
-    oscillator.start(audioCtx.currentTime);
-    oscillator.stop(audioCtx.currentTime + 0.3); // 0.3 seconds long
-  };
+  oscillator.start(audioCtx.currentTime);
+  oscillator.stop(audioCtx.currentTime + 0.15); 
+};
 
   const generateFakeRecords = (): Crossing[] => {
     const entryRecord: Crossing = {
