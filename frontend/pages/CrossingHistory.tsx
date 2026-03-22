@@ -33,20 +33,31 @@ const CrossingHistory: React.FC = () => {
 
   const playBeep = () => {
   const audioCtx = new AudioContext();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
 
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+  const playTone = (frequency: number, startTime: number, duration: number) => {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
 
-  oscillator.type = 'sine';
-  oscillator.frequency.setValueAtTime(1480, audioCtx.currentTime); 
-  gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15); 
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
 
-  oscillator.start(audioCtx.currentTime);
-  oscillator.stop(audioCtx.currentTime + 0.15); 
+    oscillator.type = 'square'; // square wave sounds more like a scanner than sine
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+
+    gainNode.gain.setValueAtTime(0, startTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);  // quick fade in
+    gainNode.gain.linearRampToValueAtTime(0.3, startTime + duration - 0.01);
+    gainNode.gain.linearRampToValueAtTime(0, startTime + duration); // quick fade out
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
+  };
+
+  const t = audioCtx.currentTime;
+  //playTone(1850, t, 0.08);        // first short beep
+  playTone(1850, t + 0.1, 0.12); // second slightly longer beep
 };
+
 
   const generateFakeRecords = (): Crossing[] => {
     const entryRecord: Crossing = {
