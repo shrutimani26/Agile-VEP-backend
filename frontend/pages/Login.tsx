@@ -102,24 +102,6 @@ const Login: React.FC<LoginProps> = ({ role }) => {
               </Link>
             </>
           )}
-          <div className="mt-6 pt-6 border-t border-slate-100">
-            <p className="text-xs text-slate-400 text-center uppercase tracking-widest font-bold">Available Demo Credentials</p>
-            <div className="mt-4 p-4 bg-slate-50 rounded-lg text-[10px] space-y-3">
-              {role === UserRole.DRIVER ? (
-                <>
-                  <p><span className="font-bold">Driver 1:</span> mdriver1@gmail.com / password 1</p>
-                  <p><span className="font-bold">Driver 2:</span> mdriver2@gmail.com / password 2</p>
-                  <p><span className="font-bold">Driver 3:</span> mdriver3@gmail.com / password 3</p>
-                </>
-              ) : (
-                <>
-                  <p><span className="font-bold">Officer 1:</span> officer1@lta.gov.sg / password 1</p>
-                  <p><span className="font-bold">Officer 2:</span> officer2@lta.gov.sg / password 2</p>
-                  <p><span className="font-bold">Officer 3:</span> officer3@lta.gov.sg / password 3</p>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>
