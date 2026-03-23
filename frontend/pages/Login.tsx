@@ -85,6 +85,11 @@ const Login: React.FC<LoginProps> = ({ role }) => {
               placeholder="••••••••"
             />
           </div>
+          <div className="flex justify-end">
+            <button type="button" className="text-sm text-emerald-600 hover:underline font-medium">
+              Forgot password?
+            </button>
+          </div>
           <button className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold mt-4 hover:bg-emerald-700 shadow-md">
             Sign In
           </button>
