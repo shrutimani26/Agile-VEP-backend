@@ -45,6 +45,24 @@ const OfficerScan: React.FC = () => {
     } else if (app.status !== ApplicationStatus.APPROVED) {
       setResult({ success: false, message: `Permit is ${app.status}. Clearance denied.` });
     } else {
+      // Compliance check: deny entry if vehicle was blacklisted after QR generation
+      const vehicle = await DBService.getVehicleById(app.vehicleId);
+      if (vehicle?.isBlacklisted) {
+        await DBService.logCrossing({
+          id: 'c-' + Math.random().toString(36).substr(2, 9),
+          permitId: app.id,
+          vehicleId: app.vehicleId,
+          userId: app.userId,
+          direction: direction,
+          checkpoint: 'Woodlands',
+          timestamp: new Date().toISOString(),
+          result: 'FAIL' as any,
+          failReason: 'Vehicle blacklisted'
+        });
+        setResult({ success: false, message: 'Entry denied. Vehicle is blacklisted.' });
+        return;
+      }
+
       // Log the crossing with selected direction
       await DBService.logCrossing({
         id: 'c-' + Math.random().toString(36).substr(2, 9),

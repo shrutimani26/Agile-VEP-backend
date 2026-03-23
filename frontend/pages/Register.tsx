@@ -35,6 +35,11 @@ const Register: React.FC<RegisterProps> = ({ onBack }) => {
       return;
     }
 
+    if (formData.password.length > 16) {
+      setError('Password must be no more than 16 characters long');
+      return;
+    }
+
     setLoading(true);
     try {
       await registerUser(

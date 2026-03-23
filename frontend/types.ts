@@ -53,6 +53,7 @@ export interface Vehicle {
   year: number;
   vin: string;
   insuranceExpiry: string;
+  isBlacklisted?: boolean;
   createdAt: string;
 }
 

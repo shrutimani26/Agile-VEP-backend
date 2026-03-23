@@ -65,6 +65,20 @@ class CrossingService:
             if not vehicle:
                 return None, "Vehicle not found"
             
+            if vehicle.is_blacklisted:
+                crossing = Crossing(
+                    application_id=application_id,
+                    vehicle_id=vehicle_id,
+                    user_id=user_id,
+                    direction=CrossingDirection[direction.upper()],
+                    checkpoint=checkpoint,
+                    result=CrossingResult.FAIL,
+                    fail_reason="Vehicle blacklisted"
+                )
+                db.session.add(crossing)
+                db.session.commit()
+                return crossing, "Vehicle blacklisted"
+
             if vehicle.id != application.vehicle_id:
                 crossing = Crossing(
                     application_id=application_id,

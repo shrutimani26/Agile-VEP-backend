@@ -13,6 +13,7 @@ class Vehicle(db.Model):
     year = db.Column(db.Integer, nullable=False)
     vin = db.Column(db.String(17), unique=True, nullable=False)
     insurance_expiry = db.Column(db.Date, nullable=False)
+    is_blacklisted = db.Column(db.Boolean, default=False, nullable=False)
     
     # Relationships
     applications = db.relationship('Application', backref='vehicle', lazy=True, cascade='all, delete-orphan')
@@ -34,5 +35,6 @@ class Vehicle(db.Model):
             'year': self.year,
             'vin': self.vin,
             'insuranceExpiry': self.insurance_expiry.isoformat(),
+            'isBlacklisted': self.is_blacklisted,
             'createdAt': self.created_at.isoformat()
         }

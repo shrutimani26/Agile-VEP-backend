@@ -59,8 +59,10 @@ def register():
         # Validate inputs
         if '@' not in email or '.' not in email:
             return jsonify({'error': 'Invalid email format'}), 400
-        if len(password) < 8:
-            return jsonify({'error': 'Password must be at least 8 characters long'}), 400
+        if len(password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters long'}), 400
+        if len(password) > 16:
+            return jsonify({'error': 'Password must be no more than 16 characters long'}), 400
         if not phone_number:
             return jsonify({'error': 'Phone number is required'}), 400
         if not nric_passport:

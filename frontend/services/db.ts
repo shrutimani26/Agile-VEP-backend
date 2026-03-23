@@ -153,6 +153,18 @@ const initialData: DBStore = {
       vin: 'PERMY-99887766',
       insuranceExpiry: '2024-05-10',
       createdAt: new Date().toISOString()
+    },
+    {
+      id: 'v-3',
+      userId: 'driver-3',
+      plateNo: 'BLK 0001',
+      make: 'Toyota',
+      model: 'Vios',
+      year: 2022,
+      vin: 'TOYVIOS-00000001',
+      insuranceExpiry: '2027-12-31',
+      isBlacklisted: true,
+      createdAt: new Date().toISOString()
     }
   ],
   applications: [
@@ -175,6 +187,18 @@ const initialData: DBStore = {
       status: ApplicationStatus.PENDING_REVIEW,
       submittedAt: '2024-02-15T08:00:00Z',
       createdAt: '2024-02-15T07:30:00Z',
+      paymentStatus: 'PAID',
+      documents: []
+    },
+    {
+      id: 'app-3',
+      userId: 'driver-3',
+      vehicleId: 'v-3',
+      status: ApplicationStatus.APPROVED,
+      submittedAt: '2025-01-01T10:00:00Z',
+      reviewedAt: '2025-01-05T14:30:00Z',
+      expiryDate: '2026-12-31T23:59:59Z',
+      createdAt: '2025-01-01T09:00:00Z',
       paymentStatus: 'PAID',
       documents: []
     }
