@@ -262,6 +262,9 @@ const ApplicationWizard: React.FC = () => {
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
 
+  // Today's date string for the min attribute (YYYY-MM-DD)
+  const todayStr = new Date().toISOString().split('T')[0];
+
   // ── Validation ────────────────────────────────────────────────────────────
   const validateStep1 = () => {
     if (!vehicleData.plateNo || !vehicleData.make || !vehicleData.model || !vehicleData.vin || !vehicleData.insuranceExpiry) {
@@ -274,6 +277,13 @@ const ApplicationWizard: React.FC = () => {
     }
     if (vehicleData.vin.length !== 17) {
       setError('VIN must be exactly 17 characters long.');
+      return false;
+    }
+    // ── Insurance expiry must not be in the past ──────────────────────────
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(vehicleData.insuranceExpiry) < today) {
+      setError('Insurance expiry date cannot be in the past.');
       return false;
     }
     setError(null);
@@ -352,12 +362,11 @@ const ApplicationWizard: React.FC = () => {
       setError('Please check the declaration checkbox to confirm you understand the terms.');
       return;
     }
-    
+
     try {
       setSubmitting(true);
       setError(null);
-      
-      // First, check if vehicle already exists
+
       const result = await apiService.Application.create({
         plate_no: vehicleData.plateNo,
         make: vehicleData.make,
@@ -366,14 +375,13 @@ const ApplicationWizard: React.FC = () => {
         vin: vehicleData.vin,
         insurance_expiry: vehicleData.insuranceExpiry
       });
-      
+
       await apiService.Application.submit(result.application.id);
-      
+
       alert('Application submitted successfully!');
       navigate('/driver/vehicles');
     } catch (err: any) {
-      // Handle duplicate plate number error
-      if (err.response?.data?.error?.includes('duplicate') || 
+      if (err.response?.data?.error?.includes('duplicate') ||
           err.response?.data?.error?.includes('already exists') ||
           err.message?.includes('duplicate key value violates unique constraint')) {
         setError(`A vehicle with plate number "${vehicleData.plateNo}" already exists. Please use a different plate number or contact support if you believe this is an error.`);
@@ -518,6 +526,7 @@ const ApplicationWizard: React.FC = () => {
                   <label className="text-sm font-semibold text-slate-700">Insurance Expiry Date <span className="text-red-500">*</span></label>
                   <input
                     type="date"
+                    min={todayStr}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                     value={vehicleData.insuranceExpiry}
                     onChange={(e) => setVehicleData({ ...vehicleData, insuranceExpiry: e.target.value })}
@@ -756,7 +765,6 @@ const ApplicationWizard: React.FC = () => {
                 </p>
               </div>
 
-              {/* Error message moved to below declaration checkbox */}
               {error && (
                 <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm mt-2">
                   {error}
