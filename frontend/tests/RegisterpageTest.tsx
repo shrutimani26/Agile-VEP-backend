@@ -230,6 +230,54 @@ describe('Register component', () => {
   });
 
   // ===========================================================================
+  // SECTION 3b — Boundary Value Analysis: Password Maximum Length
+  // ---------------------------------------------------------------------------
+  // For the rule "password must be <= 16 characters", the boundary values are:
+  //   • 16 characters → just INSIDE the valid range (should pass)
+  //   • 17 characters → just OUTSIDE the valid range (should fail)
+  // ===========================================================================
+
+  describe('Boundary Value Analysis — password maximum length (boundary = 16)', () => {
+
+    // Boundary value: 16 characters (exactly at the limit — should PASS)
+    it('accepts a password of exactly 16 characters [boundary: 16 = maximum, valid]', async () => {
+      mockRegisterUser.mockResolvedValue({});
+      renderRegister();
+      fillForm({ password: 'abcdefghij123456', confirmPassword: 'abcdefghij123456' });
+      submitForm();
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/no more than 16 characters/i)
+        ).not.toBeInTheDocument()
+      );
+    });
+
+    // Boundary value: 17 characters (one above the limit — should FAIL)
+    it('rejects a password of exactly 17 characters [boundary: 17 = 16+1, invalid]', async () => {
+      renderRegister();
+      fillForm({ password: 'abcdefghij1234567', confirmPassword: 'abcdefghij1234567' });
+      submitForm();
+      await waitFor(() =>
+        expect(
+          screen.getByText(/no more than 16 characters/i)
+        ).toBeInTheDocument()
+      );
+    });
+
+    // Partition: length > 16 (INVALID class) — representative value well above limit
+    it('rejects a password well above the maximum [partition: length >> 16]', async () => {
+      renderRegister();
+      fillForm({ password: 'thisPasswordIsTooLong999!', confirmPassword: 'thisPasswordIsTooLong999!' });
+      submitForm();
+      await waitFor(() =>
+        expect(
+          screen.getByText(/no more than 16 characters/i)
+        ).toBeInTheDocument()
+      );
+    });
+  });
+
+  // ===========================================================================
   // SECTION 4 — Input Space Partitioning: Password Match
   // ---------------------------------------------------------------------------
   // For the password-match rule, the two partitions are:
