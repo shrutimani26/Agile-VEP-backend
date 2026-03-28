@@ -266,6 +266,17 @@ def seed():
         db.session.flush()
 
         # ── QR Codes ───────────────────────────────────────────────────────────
+        # NOTE: In production the QR records below would NOT be hardcoded here.
+        # Instead, each QRCode row would be created on-the-fly when a driver
+        # requests a pass via the API (see POST /api/v1/applications/<id>/generate-qr).
+        # The flow would be:
+        #   1. Verify the linked Application is APPROVED and not expired.
+        #   2. raw_token = make_token()          # random UUID4 – never stored
+        #   3. token_hash = hash_token(raw_token) # HMAC-SHA256, stored in DB
+        #   4. Insert QRCode row (status=ACTIVE, expires_at = end of today)
+        #   5. Insert QRIssueAudit row for traceability
+        #   6. Return raw_token to the frontend so it can render the actual QR image
+        # The static seed data below exists only to give the demo a predictable state.
         print("Seeding QR codes...")
 
         raw_001 = make_token()
